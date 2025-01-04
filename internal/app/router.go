@@ -13,11 +13,12 @@ func InitializeRoute(app *fiber.App, appConfig *commons.AppConfig) {
 	env := appConfig.Env
 	db := appConfig.Db
 	mailer := appConfig.Mailer
+	s3Config := env.LoadS3Config()
 
 	jwtKey := env.LoadJwtConfig()
 	authGenerator := utils.InitializeAuth(jwtKey.SecretKey, jwtKey.RefreshKey)
 	userService := services.InitializeUserService(authGenerator, db, mailer)
-	productService := services.InitializeProductService(db)
+	productService := services.InitializeProductService(db, appConfig.S3Service, s3Config)
 
 	oauth2Config := env.LoadOAuthConfig()
 

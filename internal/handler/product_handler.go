@@ -1,11 +1,7 @@
 package handler
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rubenkristian/backend/commons"
@@ -65,45 +61,28 @@ func (productHandler *ProductHandler) PostCreateProduct(c *fiber.Ctx) error {
 		return utils.ResponseError(fiber.StatusBadRequest, "Bad Request", err)(c)
 	}
 
-	image, err := c.FormFile("image")
+	productService := productHandler.productService
+
+	result, err := productService.SaveImage(c, "image")
 
 	if err != nil {
-		return utils.ResponseError(fiber.StatusBadRequest, "Bad Request", err)(c)
-	}
-
-	if !utils.IsImage(image) {
-		return utils.ResponseError(fiber.StatusBadRequest, "Bad Request", fmt.Errorf("file is not support, image only"))(c)
-	}
-
-	os.MkdirAll("./images/product", os.ModePerm)
-
-	randomFileName, err := utils.GenerateImageName(8)
-
-	if err != nil {
-		return utils.ResponseError(fiber.StatusInternalServerError, "Something went wrong", err)(c)
-	}
-
-	savePath := filepath.Join("./images/product", fmt.Sprintf("%s-%d.%s", randomFileName, time.Now().Unix(), filepath.Ext(image.Filename)))
-
-	if err := c.SaveFile(image, savePath); err != nil {
-		return utils.ResponseError(fiber.StatusInternalServerError, "Something went wrong", err)(c)
+		return utils.ResponseError(fiber.StatusBadRequest, result, err)(c)
 	}
 
 	var product *models.Product = &models.Product{
 		Name:        name,
 		Description: desc,
 		Price:       price,
-		Image:       savePath,
+		Image:       result,
 	}
 
-	productHandler.productService.CreateProduct(product)
+	productService.CreateProduct(product)
 
 	return utils.ResponseSuccess(fiber.StatusCreated, "Success create product", product)(c)
 }
 
 func (productHandler *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
 	var product models.Product
-	imageAvailable := true
 	productId, err := c.ParamsInt("product_id")
 
 	if err != nil {
@@ -122,28 +101,13 @@ func (productHandler *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
 	product.Description = desc
 	product.Price = price
 
-	image, err := c.FormFile("image")
+	result, err := productHandler.productService.SaveImage(c, "image")
 
 	if err != nil {
-		imageAvailable = false
-		product.Image = ""
+		return utils.ResponseError(fiber.StatusInternalServerError, result, err)(c)
 	}
 
-	if imageAvailable && !utils.IsImage(image) {
-		return utils.ResponseError(fiber.StatusBadRequest, "Bad request", err)(c)
-	}
-
-	if imageAvailable {
-		os.MkdirAll("./images/product", os.ModePerm)
-
-		savePath := filepath.Join("./images/product", image.Filename)
-
-		if err := c.SaveFile(image, savePath); err != nil {
-			return utils.ResponseError(fiber.StatusInternalServerError, "Something went wrong", err)(c)
-		}
-
-		product.Image = savePath
-	}
+	product.Image = result
 
 	updatedProduct, err := productHandler.productService.UpdateProduct(uint(productId), &product)
 
