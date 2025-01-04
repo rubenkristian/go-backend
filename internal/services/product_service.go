@@ -3,10 +3,15 @@ package services
 import (
 	"errors"
 	"fmt"
+	"mime/multipart"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/rubenkristian/backend/commons"
 	"github.com/rubenkristian/backend/internal/models"
+	"github.com/rubenkristian/backend/utils"
 	"gorm.io/gorm"
 )
 
@@ -83,4 +88,28 @@ func (ps *ProductService) UpdateProduct(id uint, input *models.Product) (*models
 
 func (ps *ProductService) DeleteProduct(id uint) error {
 	return ps.db.Delete(&models.Product{}, id).Error
+}
+
+func (ps *ProductService) SaveImage(image *multipart.FileHeader) (string, error) {
+	if !utils.IsImage(image) {
+		return "Bad Request", fmt.Errorf("file is not support, image only")
+		// return utils.ResponseError(fiber.StatusBadRequest, "Bad Request", fmt.Errorf("file is not support, image only"))(c)
+	}
+
+	os.MkdirAll("./images/product", os.ModePerm)
+
+	randomFileName, err := utils.GenerateImageName(8)
+
+	if err != nil {
+		return "Something went wrong", err
+		// return utils.ResponseError(fiber.StatusInternalServerError, "Something went wrong", err)(c)
+	}
+
+	savePath := filepath.Join("./images/product", fmt.Sprintf("%s-%d.%s", randomFileName, time.Now().Unix(), filepath.Ext(image.Filename)))
+
+	return savePath, nil
+
+	// if err := c.SaveFile(image, savePath); err != nil {
+	// 	return utils.ResponseError(fiber.StatusInternalServerError, "Something went wrong", err)(c)
+	// }
 }

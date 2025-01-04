@@ -7,9 +7,10 @@ import (
 )
 
 type AppConfig struct {
-	Db     *gorm.DB
-	Mailer *utils.Emailer
-	Env    *configs.EnvConfig
+	Db        *gorm.DB
+	Mailer    *utils.Emailer
+	Env       *configs.EnvConfig
+	S3Service *utils.S3Service
 }
 
 type PaginationParams struct {

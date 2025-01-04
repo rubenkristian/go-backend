@@ -1,11 +1,9 @@
 package handler
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rubenkristian/backend/commons"
@@ -71,21 +69,15 @@ func (productHandler *ProductHandler) PostCreateProduct(c *fiber.Ctx) error {
 		return utils.ResponseError(fiber.StatusBadRequest, "Bad Request", err)(c)
 	}
 
-	if !utils.IsImage(image) {
-		return utils.ResponseError(fiber.StatusBadRequest, "Bad Request", fmt.Errorf("file is not support, image only"))(c)
-	}
+	productService := productHandler.productService
 
-	os.MkdirAll("./images/product", os.ModePerm)
-
-	randomFileName, err := utils.GenerateImageName(8)
+	result, err := productService.SaveImage(image)
 
 	if err != nil {
-		return utils.ResponseError(fiber.StatusInternalServerError, "Something went wrong", err)(c)
+		return utils.ResponseError(fiber.StatusBadRequest, result, err)(c)
 	}
 
-	savePath := filepath.Join("./images/product", fmt.Sprintf("%s-%d.%s", randomFileName, time.Now().Unix(), filepath.Ext(image.Filename)))
-
-	if err := c.SaveFile(image, savePath); err != nil {
+	if err := c.SaveFile(image, result); err != nil {
 		return utils.ResponseError(fiber.StatusInternalServerError, "Something went wrong", err)(c)
 	}
 
@@ -93,10 +85,10 @@ func (productHandler *ProductHandler) PostCreateProduct(c *fiber.Ctx) error {
 		Name:        name,
 		Description: desc,
 		Price:       price,
-		Image:       savePath,
+		Image:       result,
 	}
 
-	productHandler.productService.CreateProduct(product)
+	productService.CreateProduct(product)
 
 	return utils.ResponseSuccess(fiber.StatusCreated, "Success create product", product)(c)
 }
