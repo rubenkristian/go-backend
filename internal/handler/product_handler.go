@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -63,22 +61,12 @@ func (productHandler *ProductHandler) PostCreateProduct(c *fiber.Ctx) error {
 		return utils.ResponseError(fiber.StatusBadRequest, "Bad Request", err)(c)
 	}
 
-	image, err := c.FormFile("image")
-
-	if err != nil {
-		return utils.ResponseError(fiber.StatusBadRequest, "Bad Request", err)(c)
-	}
-
 	productService := productHandler.productService
 
-	result, err := productService.SaveImage(image)
+	result, err := productService.SaveImage(c, "image")
 
 	if err != nil {
 		return utils.ResponseError(fiber.StatusBadRequest, result, err)(c)
-	}
-
-	if err := c.SaveFile(image, result); err != nil {
-		return utils.ResponseError(fiber.StatusInternalServerError, "Something went wrong", err)(c)
 	}
 
 	var product *models.Product = &models.Product{
@@ -95,7 +83,6 @@ func (productHandler *ProductHandler) PostCreateProduct(c *fiber.Ctx) error {
 
 func (productHandler *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
 	var product models.Product
-	imageAvailable := true
 	productId, err := c.ParamsInt("product_id")
 
 	if err != nil {
@@ -114,28 +101,13 @@ func (productHandler *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
 	product.Description = desc
 	product.Price = price
 
-	image, err := c.FormFile("image")
+	result, err := productHandler.productService.SaveImage(c, "image")
 
 	if err != nil {
-		imageAvailable = false
-		product.Image = ""
+		return utils.ResponseError(fiber.StatusInternalServerError, result, err)(c)
 	}
 
-	if imageAvailable && !utils.IsImage(image) {
-		return utils.ResponseError(fiber.StatusBadRequest, "Bad request", err)(c)
-	}
-
-	if imageAvailable {
-		os.MkdirAll("./images/product", os.ModePerm)
-
-		savePath := filepath.Join("./images/product", image.Filename)
-
-		if err := c.SaveFile(image, savePath); err != nil {
-			return utils.ResponseError(fiber.StatusInternalServerError, "Something went wrong", err)(c)
-		}
-
-		product.Image = savePath
-	}
+	product.Image = result
 
 	updatedProduct, err := productHandler.productService.UpdateProduct(uint(productId), &product)
 
